@@ -53,8 +53,11 @@ func (r Rectangle) Intersected(x, y, angle float64) bool {
 
 func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) bool {
 	a := ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
+	if a < 0 || a > 1 {
+		return false
+	}
 	b := ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
-	return a >= 0 && b >= 0 && a <= 1 && b <= 1
+	return b >= 0 && b <= 1
 }
 
 // func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) (x float64, y float64, ok bool) {
