@@ -74,7 +74,6 @@ func (n *Network) Input(inputs []float64) []float64 {
 				offset += 1
 			}
 
-			// bias ?
 			total = n.activation(total + bias[layer])
 			nextInputs[outp] = total
 		}

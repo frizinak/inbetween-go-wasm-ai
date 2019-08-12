@@ -19,55 +19,36 @@ func main() {
 	}()
 	rand.Seed(time.Now().UnixNano())
 
-	// 	n1 := neural.New(neural.Sigmoid, []int{2, 8, 3})
-	// 	n1.RandomWeights()
-	//
-	// 	n2 := neural.New(neural.Sigmoid, []int{2, 8, 3})
-	// 	n2.RandomWeights()
-	//
-	// 	fmt.Println(n1.Input([]float64{0.3, 1.2}))
-	// 	fmt.Println(n2.Input([]float64{0.3, 1.2}))
-	//
-	// 	w := genetic.Reproduce(n1.Weights(), n2.Weights(), 0.01)
-	// 	child := neural.New(neural.Sigmoid, []int{2, 8, 3})
-	// 	if err := child.SetWeights(w); err != nil {
-	// 		panic(err)
-	// 	}
-	//
-	// 	fmt.Println(child.Input([]float64{0.3, 1.2}))
-	// 	fmt.Println(child.Input([]float64{0.3, 1.2}))
-	// 	fmt.Println(child.Input([]float64{0.3, 1.2}))
-	// 	fmt.Println(child.Input([]float64{0.3, 1.2}))
-	//
-	r1 := world.NewWall(world.Rect(200, 200, 5, 5))
-	// r2 := world.NewWall(world.Rect(10, 450, 20, 30))
-	//fmt.Println(r1.Distance(r2), r2.Distance(r1))
-	// rad := r1.Direction(r2)
-	//fmt.Println(rad, (rad * 180 / math.Pi))
+	r1 := world.NewWall(world.Rect(200, 200, 50, 100))
+	bot := world.NewBot(0, 250, 1)
+	x, y := bot.Center()
 
-	bot := world.NewBot(200, 0, 1)
-	for i := 0.0; i < math.Pi*4; i += math.Pi / 4 {
+	l := 100.0
+	angle := 0.0
+	x1, y1 := x+math.Cos(angle)*l, y+math.Sin(angle)*l
+	fmt.Println(x1, y1)
+
+	angle = math.Pi / 4
+	for i := 0.0; i < math.Pi*4; i += angle {
 		fmt.Printf(
-			"%4d %4d %4d %5.2f %5.2f\n",
+			"%t %4d %4d %4d %4d %5.2f %5.2f\n",
+			r1.Intersected(x, y, bot.AbsDirection()),
 			int(i*180/math.Pi),
+			int(bot.AbsDirection()*180/math.Pi),
 			int(bot.Wall.Direction(r1)*180/math.Pi),
 			int(bot.Direction(r1)*180/math.Pi),
 			bot.Direction(r1),
 			bot.Direction(r1)/(math.Pi),
 		)
-		bot.Rotate(math.Pi / 4)
+		bot.Rotate(angle)
 	}
-	// fmt.Println(bot.Direction(r1) * 180 / math.Pi)
-
-	//bot.Tick(r1, 500)
-
-	fmt.Println(math.Pi * 2 * -1)
-	fmt.Println(math.Pi * 2 * -0.5)
-	fmt.Println(math.Pi * 2 * 0.5)
-	fmt.Println(math.Pi * 2 * 1)
 	//os.Exit(0)
 
 	a := app.New()
-	_, wait := a.Run(time.Duration(0))
+	_, tick, wait := a.Run(time.Duration(0))
+
+	for range tick {
+		fmt.Printf("top: %5.1f\n", a.MaxScore())
+	}
 	<-wait
 }

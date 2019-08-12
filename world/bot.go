@@ -2,6 +2,7 @@ package world
 
 import (
 	"math"
+	"math/rand"
 
 	"github.com/frizinak/inbetween-go-wasm-ai/neural"
 )
@@ -24,13 +25,12 @@ type Bot struct {
 }
 
 func NewBot(x, y float64, maxSpeed float64) *Bot {
-	b := neural.New(neural.Sigmoid, []int{4, 16, 2})
-	// b := neural.New(neural.Sigmoid, []int{4, 18, 32, 18, 2})
+	b := neural.New(neural.Sigmoid, []int{3, 18, 2})
 	b.RandomWeights()
 	return &Bot{
-		Wall:      NewWall(Rect(x, y, 8, 8)),
+		Wall:      NewWall(Rect(x, y, 12, 12)),
 		brain:     b,
-		direction: 0,
+		direction: rand.Float64(),
 		maxSpeed:  maxSpeed,
 	}
 }
@@ -48,19 +48,27 @@ func (b *Bot) Brain() *neural.Network {
 }
 
 func (b *Bot) Reset() {
+	b.speed = 0
 	b.score = 0
+	b.direction = rand.Float64()
+}
+
+func (b *Bot) Speed() float64 {
+	return b.speed
+}
+
+func (b *Bot) Center() (x, y float64) {
+	x, y = b.Min.X+b.Dx()/2, b.Min.Y+b.Dy()/2
+	return
+}
+
+func (b *Bot) AbsDirection() float64 {
+	return b.direction * Pi2
 }
 
 func (b *Bot) Direction(o Object) float64 {
 	obj := b.Wall.Direction(o)
 	own := b.direction * Pi2
-	// for own < 0 {
-	// 	own += Pi2
-	// }
-	// for own > Pi2 {
-	// 	own -= Pi2
-	// }
-
 	diff := obj - own
 	for diff < -math.Pi {
 		diff += Pi2
@@ -80,29 +88,28 @@ func (b *Bot) Rotate(rad float64) {
 	b.direction = dir / Pi2
 }
 
-func (b *Bot) Tick(o Object, maxDistance float64) {
-	input := make([]float64, 4)
+func (b *Bot) Tick(o Object, dist, maxDistance float64) {
+	input := make([]float64, 3)
 	input[0] = b.speed / b.maxSpeed
-	///input[1] = b.direction
-	input[1] = b.Distance(o) / maxDistance
-	input[2] = b.Direction(o) / math.Pi
-
-	b.ClosestType = "wall"
-	switch o.(type) {
-	case *Goal:
-		b.ClosestType = "goal"
-		input[3] = 1
+	input[1] = -1
+	if o != nil {
+		input[1] = dist / maxDistance
+		b.ClosestType = "wall"
+		switch o.(type) {
+		case *Goal:
+			b.ClosestType = "goal"
+			input[2] = 1
+		}
 	}
 
 	output := b.brain.Input(input)
-	//fmt.Println(output)
-	if output[0] > 0.9 {
-		b.direction += 0.04 * (output[0] - 0.5)
-	} else if output[0] < 0.1 {
-		b.direction -= 0.04 * ((1 - output[0]) - 0.5)
+	if output[0] > 0.6 {
+		b.direction += 0.02
+	} else if output[0] < 0.4 {
+		b.direction -= 0.02
 	}
 
-	if b.direction < 0 {
+	if b.direction < -1 {
 		b.direction += 1
 	} else if b.direction > 1 {
 		b.direction -= 1
@@ -112,12 +119,6 @@ func (b *Bot) Tick(o Object, maxDistance float64) {
 	if output[1] > 0.5 {
 		b.speed += (output[1] - 0.5) - 0.25
 	}
-
-	// if output[1] > 0.9 {
-	// 	b.speed += b.maxSpeed * 0.1
-	// } else if output[1] < 0.1 {
-	// 	b.speed -= b.maxSpeed * 0.1
-	// }
 
 	if b.speed > b.maxSpeed {
 		b.speed = b.maxSpeed

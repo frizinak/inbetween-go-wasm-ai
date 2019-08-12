@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"math/rand"
 	"sort"
 	"time"
@@ -11,33 +10,62 @@ import (
 )
 
 type App struct {
-	bestScore float64
+	w        *world.World
+	goal     world.Object
+	maxDist  float64
+	maxScore float64
 }
 
 func New() *App {
-	return &App{}
+
+	app := &App{}
+
+	nbots := 300
+	height := 800.0
+	width := 1200.0
+
+	app.w = world.New(world.Rect(0, 0, width, height))
+	app.maxDist = app.w.MaxDistance()
+
+	bots := make([]*world.Bot, 0, nbots)
+	for i := 0; i < nbots; i++ {
+		bots = append(bots, world.NewBot(600, 600, 3))
+	}
+
+	for _, bot := range bots {
+		app.w.AddBot(bot)
+	}
+
+	app.w.AddObject(world.NewWall(world.Rect(400, 350, 400, 20)))
+	app.goal = world.NewGoal(world.Rect(500, 200, 50, 50))
+	app.w.AddObject(app.goal)
+
+	app.w.AddObject(world.NewWall(world.Rect(-20, -20, 20, height+40)))
+	app.w.AddObject(world.NewWall(world.Rect(-20, -20, width+40, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(width, -20, 20, height+40)))
+	app.w.AddObject(world.NewWall(world.Rect(-20, height, width+40, 20)))
+
+	return app
 }
 
-func (a *App) MaxScore() float64 {
-	return a.bestScore
+func (app *App) MaxScore() float64 {
+	return app.maxScore
 }
 
-func (a *App) NewGeneration(bots []*world.Bot, goal world.Object, top int, chance float64) {
-	sort.Slice(bots, func(i, j int) bool {
-		return bots[i].Score() > bots[j].Score()
+func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
+	sort.Slice(app.w.Bots, func(i, j int) bool {
+		return app.w.Bots[i].Score() > app.w.Bots[j].Score()
 	})
 
-	a.bestScore = bots[0].Score()
-	allNegative := a.bestScore < 0
-	fmt.Println(a.bestScore, bots[0].Distance(goal))
+	app.maxScore = app.w.Bots[0].Score()
+	select {
+	case tick <- struct{}{}:
+	default:
+	}
 
 	best := make([][]float64, 0, top)
 	for i := 0; i < top; i++ {
-		if !allNegative && bots[i].Score() < 0 {
-			break
-		}
-
-		w := bots[i].Brain().Weights()
+		w := app.w.Bots[i].Brain().Weights()
 		cp := make([]float64, len(w))
 		copy(cp, w)
 		best = append(best, cp)
@@ -45,15 +73,11 @@ func (a *App) NewGeneration(bots []*world.Bot, goal world.Object, top int, chanc
 
 	top = len(best)
 
-	if !allNegative {
-		goal.SetPos(float64(300+rand.Intn(500)), float64(100+rand.Intn(200)))
-	}
-
-	for i, b := range bots {
+	app.goal.SetPos(float64(300+rand.Intn(500)), float64(100+rand.Intn(200)))
+	for i, b := range app.w.Bots {
 		b.Reset()
-		// b.SetPos(float64(100+rand.Intn(1100)), float64(500+rand.Intn(150)))
-		b.SetPos(600, 600)
-		if i < top && !allNegative {
+		b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
+		if i < top {
 			continue
 		}
 
@@ -70,124 +94,48 @@ func (a *App) NewGeneration(bots []*world.Bot, goal world.Object, top int, chanc
 			p1 := best[ix1]
 			p2 := best[ix2]
 			b.Brain().SetWeights(genetic.Reproduce(p1, p2, chance))
-			if !allNegative || (allNegative && rand.Float64() > 0.8) {
-				continue
-			}
+			continue
 		}
 
 		b.Brain().RandomWeights()
-
 	}
 }
 
-func (a *App) Run(sleep time.Duration) (*world.World, <-chan struct{}) {
+func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan struct{}) {
 	wait := make(chan struct{})
-	rand.Seed(time.Now().UnixNano())
-
-	height := 800.0
-	width := 1200.0
-	w := world.New(world.Rect(0, 0, width, height))
-	maxDist := w.MaxDistance()
-
-	/// w.AddObject(world.NewWall(world.Rect(230, 230, 20, 20)))
-	/// w.AddObject(world.NewWall(world.Rect(500, 350, 20, 40)))
-	/// w.AddObject(world.NewWall(world.Rect(800, 200, 20, 120)))
-	goal := world.NewGoal(world.Rect(500, 200, 5, 5))
-	w.AddObject(goal)
-
-	w.AddObject(world.NewWall(world.Rect(-20, -20, 20, height+40)))
-	w.AddObject(world.NewWall(world.Rect(-20, -20, width+40, 20)))
-	w.AddObject(world.NewWall(world.Rect(width, -20, 20, height+40)))
-	w.AddObject(world.NewWall(world.Rect(-20, height, width+40, 20)))
-
-	nbots := 300
-	bots := make([]*world.Bot, 0, nbots)
-	for i := 0; i < nbots; i++ {
-		bots = append(bots, world.NewBot(600, 600, 3))
-	}
-
-	for _, bot := range bots {
-		w.AddBot(bot)
-	}
-
+	tick := make(chan struct{})
 	newGenCount := 1000
 
 	go func() {
 		var count int
 		var dist float64
-		//var dir float64
 		var b *world.Bot
 		var i int
 		var score float64
 
-		// dirs := make([]float64, nbots)
-		dists := make([]float64, nbots)
+		dists := make([]float64, len(app.w.Bots))
 		for {
-			for i, b = range bots {
-				dists[i] = b.Distance(goal)
-				//dirs[i] = b.Direction(goal)
+			for i, b = range app.w.Bots {
+				dists[i] = b.Distance(app.goal)
 			}
-			w.Tick()
+			app.w.Tick()
 			count++
 
 			if count%newGenCount == 0 {
-				a.NewGeneration(bots, goal, 4, 0.02)
+				app.NewGeneration(6, 0.08, tick)
 			}
 
-			for i, b = range bots {
-				dist = b.Distance(goal)
-				// dir = b.Direction(goal)
-
-				score = -0.1
-				// score = -math.Sqrt(dist / maxDist)
-				if dist > 1 && dist < dists[i] {
-					score += maxDist / (dist * dist)
+			for _, b = range app.w.Bots {
+				dist = b.Distance(app.goal)
+				score = app.maxDist / (dist * dist)
+				if dist < 2 {
+					score = 1000
 				}
 
-				// score -= 0.5
-				// if dist > dists[i] {
-				// 	score -= 5
-				// }
-
-				if dist <= dists[i] {
-					if dist <= 5 {
-						score += 10000
-					} else if dist < maxDist/100 {
-						score += 1000
-					} else if dist < maxDist/25 {
-						score += 100
-					} else if dist < maxDist/15 {
-						score += 10
-					}
+				if dist > 100 && b.Speed() < 0.2 {
+					score -= 1
 				}
 
-				// if dist > 200 {
-				// 	score -= 3
-				// 	if dist < dists[i] {
-				// 		score += 6
-				// 	}
-				// }
-
-				// if dist < 2 {
-				// 	score += 200
-				// } else if dist < 10 {
-				// 	score += 30
-				// } else if dist < 50 {
-				// 	score += 15
-				// } else if dist < 100 {
-				// 	score += 7
-				// } else if dist < 200 {
-				// 	score += 3
-				// }
-
-				// if dist > 100 {
-				//score -= 3
-				// if dir > -0.15 && dir < 0.15 {
-				// 	//score += 5
-				// } else if math.Abs(dir) < math.Abs(dirs[i]) {
-				// 	//score += 5
-				// }
-				/// }
 				b.Reward(score)
 			}
 
@@ -202,5 +150,5 @@ func (a *App) Run(sleep time.Duration) (*world.World, <-chan struct{}) {
 		wait <- struct{}{}
 	}()
 
-	return w, wait
+	return app.w, tick, wait
 }

@@ -48,6 +48,12 @@ func (w *World) Collision(o1, o2 Object) geometry.Rectangle {
 	return r
 }
 
+type job struct {
+	b       *Bot
+	closest Object
+	dist    float64
+}
+
 func (w *World) Tick() {
 	var score float64
 	var pos geometry.Rectangle
@@ -57,11 +63,31 @@ func (w *World) Tick() {
 	var dist float64
 	var closestDist float64
 
+	// workers := 8
+	// var wg sync.WaitGroup
+	// jobs := make(chan *job, workers)
+
+	// for i := 0; i < workers; i++ {
+	// 	wg.Add(1)
+	// 	go func() {
+	// 		for job := range jobs {
+	// 			job.b.Tick(job.closest, job.dist, w.maxDistance)
+	// 		}
+	// 		wg.Done()
+	// 	}()
+	// }
+
 	for _, b = range w.Bots {
 		pos = b.Bounds()
 		closest = nil
 		closestDist = math.MaxFloat64
+		dir := b.AbsDirection()
+		x, y := b.Center()
 		for _, o = range w.Objects {
+			if !o.Intersected(x, y, dir) {
+				continue
+			}
+
 			dist = b.Distance(o)
 			if dist < closestDist {
 				closest = o
@@ -69,7 +95,9 @@ func (w *World) Tick() {
 			}
 		}
 
-		b.Tick(closest, w.maxDistance)
+		// jobs <- &job{b, closest, closestDist}
+
+		b.Tick(closest, closestDist, w.maxDistance)
 
 		score = 0
 		for _, o = range w.Objects {
@@ -85,9 +113,27 @@ func (w *World) Tick() {
 			}
 		}
 
-		//if score != 0 {
-		//	fmt.Println(score)
-		//}
 		b.Reward(score)
 	}
+
+	// close(jobs)
+	// wg.Wait()
+
+	// for _, b := range w.Bots {
+	// 	score = 0
+	// 	for _, o = range w.Objects {
+	// 		d := o.Distance(b)
+	// 		if d == 0 {
+	// 			c := w.Collision(b, o)
+	// 			if c.Empty() {
+	// 				continue
+	// 			}
+
+	// 			score -= 20000
+	// 			b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
+	// 		}
+	// 	}
+
+	// 	b.Reward(score)
+	// }
 }
