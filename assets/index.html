@@ -9,8 +9,16 @@
 
     <body>
         <canvas id="canvas" width="1200" height="800"></canvas>
+        <button id="export">Export best brain</button>
+        <button id="import">Import brain</button>
+        <br/>
+        <textarea id="brain"></textarea>
         <script src="wasm_exec.js"></script>
         <style>
+            #brain {
+                width: 250px;
+                height: 500px;
+            }
             canvas {
                 background-color: #ccc;
                 margin: 0 auto 0 auto;

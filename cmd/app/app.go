@@ -72,6 +72,10 @@ func main() {
 	canvas := document.Call("getElementById", "canvas")
 	ctx := canvas.Call("getContext", "2d")
 
+	btnImport := document.Call("getElementById", "import")
+	btnExport := document.Call("getElementById", "export")
+	textarea := document.Call("getElementById", "brain")
+
 	var rw sync.Mutex
 	done := false
 	a := app.New()
@@ -95,6 +99,28 @@ func main() {
 
 	go func() {
 		window.Call("requestAnimationFrame", anim)
+	}()
+
+	go func() {
+		btnExport.Call(
+			"addEventListener",
+			"click",
+			js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				textarea.Set("value", a.Export())
+				return nil
+			}),
+		)
+		btnImport.Call(
+			"addEventListener",
+			"click",
+			js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+				err := a.Import(textarea.Get("value").String())
+				if err != nil {
+					window.Call("alert", err.Error())
+				}
+				return nil
+			}),
+		)
 	}()
 
 	c := make(chan struct{})

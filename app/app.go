@@ -3,6 +3,8 @@ package app
 import (
 	"math/rand"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/frizinak/inbetween-go-wasm-ai/genetic"
@@ -14,10 +16,10 @@ type App struct {
 	goal     world.Object
 	maxDist  float64
 	maxScore float64
+	top      []float64
 }
 
 func New() *App {
-
 	app := &App{}
 
 	nbots := 300
@@ -52,12 +54,52 @@ func (app *App) MaxScore() float64 {
 	return app.maxScore
 }
 
+func (app *App) Export() string {
+	if app.top == nil {
+		return ""
+	}
+
+	out := make([]string, len(app.top))
+	for i := range app.top {
+		out[i] = strconv.FormatFloat(app.top[i], 'g', -1, 64)
+	}
+
+	return strings.Join(out, "\n")
+}
+
+func (app *App) Import(s string) error {
+	lines := strings.Split(s, "\n")
+	weights := make([]float64, 0, len(lines))
+	for _, l := range lines {
+		l = strings.Trim(l, "\n\r ")
+		if l == "" {
+			continue
+		}
+
+		f, err := strconv.ParseFloat(l, 64)
+		if err != nil {
+			return err
+		}
+		weights = append(weights, f)
+	}
+
+	for _, b := range app.w.Bots {
+		if err := b.Brain().SetWeights(weights); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 	sort.Slice(app.w.Bots, func(i, j int) bool {
 		return app.w.Bots[i].Score() > app.w.Bots[j].Score()
 	})
 
+	app.top = app.w.Bots[0].Brain().Weights()
 	app.maxScore = app.w.Bots[0].Score()
+
 	select {
 	case tick <- struct{}{}:
 	default:
@@ -122,7 +164,7 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 			count++
 
 			if count%newGenCount == 0 {
-				app.NewGeneration(6, 0.08, tick)
+				app.NewGeneration(10, 0.08, tick)
 			}
 
 			for _, b = range app.w.Bots {
