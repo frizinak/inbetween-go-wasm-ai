@@ -22,7 +22,7 @@ type App struct {
 func New() *App {
 	app := &App{}
 
-	nbots := 300
+	nbots := 100
 	height := 800.0
 	width := 1200.0
 
@@ -31,15 +31,43 @@ func New() *App {
 
 	bots := make([]*world.Bot, 0, nbots)
 	for i := 0; i < nbots; i++ {
-		bots = append(bots, world.NewBot(600, 600, 3))
+		bots = append(bots, world.NewBot(600, 600, 2.5))
 	}
 
 	for _, bot := range bots {
 		app.w.AddBot(bot)
 	}
+	// ONE app.w.AddObject(world.NewWall(world.Rect(0, 380, 550, 20)))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 380, 550, 20)))
 
-	app.w.AddObject(world.NewWall(world.Rect(400, 350, 400, 20)))
-	app.goal = world.NewGoal(world.Rect(500, 200, 50, 50))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 380)))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 200)))
+	// ONE // app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
+	// ONE // app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
+
+	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 180, 200, 20)))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 50, 200, 20)))
+
+	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 50, 20, 130)))
+
+	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
+	// ONE app.goal = world.NewGoal(world.Rect(400, 100, 50, 50))
+
+	app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
+	app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
+
+	app.w.AddObject(world.NewWall(world.Rect(320, 180, 220, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(200, 50, 350, 20)))
+
+	app.w.AddObject(world.NewWall(world.Rect(200, 300, 120, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(320, 180, 20, 140)))
+
+	app.w.AddObject(world.NewWall(world.Rect(200, 50, 20, 250)))
+
+	app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
+
+	app.goal = world.NewGoal(world.Rect(250, 230, 50, 50))
+
 	app.w.AddObject(app.goal)
 
 	app.w.AddObject(world.NewWall(world.Rect(-20, -20, 20, height+40)))
@@ -115,10 +143,11 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 
 	top = len(best)
 
-	app.goal.SetPos(float64(300+rand.Intn(500)), float64(100+rand.Intn(200)))
+	// app.goal.SetPos(float64(300+rand.Intn(500)), float64(100+rand.Intn(200)))
 	for i, b := range app.w.Bots {
 		b.Reset()
-		b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
+		//b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
+		b.SetPos(float64(540+rand.Intn(100)), float64(600+rand.Intn(150)))
 		if i < top {
 			continue
 		}
@@ -146,7 +175,7 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan struct{}) {
 	wait := make(chan struct{})
 	tick := make(chan struct{})
-	newGenCount := 1000
+	newGenCount := 2000
 
 	go func() {
 		var count int
@@ -164,7 +193,7 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 			count++
 
 			if count%newGenCount == 0 {
-				app.NewGeneration(10, 0.08, tick)
+				app.NewGeneration(3, 0.005, tick)
 			}
 
 			for _, b = range app.w.Bots {
@@ -172,10 +201,6 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 				score = app.maxDist / (dist * dist)
 				if dist < 2 {
 					score = 1000
-				}
-
-				if dist > 100 && b.Speed() < 0.2 {
-					score -= 1
 				}
 
 				b.Reward(score)

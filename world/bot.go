@@ -25,7 +25,7 @@ type Bot struct {
 }
 
 func NewBot(x, y float64, maxSpeed float64) *Bot {
-	b := neural.New(neural.Sigmoid, []int{3, 18, 2})
+	b := neural.New(neural.Sigmoid, []int{3, 16, 16, 16, 2})
 	b.RandomWeights()
 	return &Bot{
 		Wall:      NewWall(Rect(x, y, 12, 12)),
@@ -104,9 +104,9 @@ func (b *Bot) Tick(o Object, dist, maxDistance float64) {
 
 	output := b.brain.Input(input)
 	if output[0] > 0.6 {
-		b.direction += 0.02
+		b.direction += 0.01
 	} else if output[0] < 0.4 {
-		b.direction -= 0.02
+		b.direction -= 0.01
 	}
 
 	if b.direction < -1 {
@@ -117,7 +117,7 @@ func (b *Bot) Tick(o Object, dist, maxDistance float64) {
 
 	b.speed -= 0.1
 	if output[1] > 0.5 {
-		b.speed += (output[1] - 0.5) - 0.25
+		b.speed += 0.2
 	}
 
 	if b.speed > b.maxSpeed {
