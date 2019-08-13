@@ -34,16 +34,18 @@ func draw(ctx js.Value, o world.Object, maxScore float64) {
 	clr := "black"
 	switch v := o.(type) {
 	case *world.Bot:
-		// if v.ClosestType == "wall" {
-		// 	clr = "black"
-		// } else if v.ClosestType == "goal" {
-		// 	clr = "red"
-		// }
+		if v.ClosestType == "wall" {
+			clr = "black"
 
-		s := v.Score()
-		if s > 0 {
-			clr = fmt.Sprintf("rgb(%d, 30, 30)", int(s/maxScore*255))
-		}
+			clr = fmt.Sprintf("rgb(%d, 30, 30)", int(v.DebugDist*255))
+		} // else if v.ClosestType == "goal" {
+		//clr = "red"
+		//}
+
+		// s := v.Score()
+		// if s > 0 {
+		// 	clr = fmt.Sprintf("rgb(%d, 30, 30)", int(s/maxScore*255))
+		// }
 
 		cx, cy := v.Center()
 		a := v.AbsDirection() + math.Pi/4
@@ -83,6 +85,7 @@ func main() {
 	var wait <-chan struct{}
 	var stop chan<- struct{}
 	interval := time.Microsecond * 500
+	//	interval = time.Millisecond * 40
 
 	run := func(iv time.Duration, n int) {
 		fmt.Println("run with", iv, n)

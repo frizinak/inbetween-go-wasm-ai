@@ -9,7 +9,7 @@ type Object interface {
 	Solid() bool
 	Distance(Object) float64
 	Direction(Object) float64
-	Intersected(x, y float64, angle float64) bool
+	IntersectedDistance(x, y float64, angle float64) (bool, float64)
 	Translate(dx, dy float64)
 	SetPos(x, y float64)
 }

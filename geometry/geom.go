@@ -41,37 +41,55 @@ func (r Rectangle) Translate(dx, dy float64) Rectangle {
 	}
 }
 
-func (r Rectangle) Intersected(x, y, angle float64) bool {
+func (r Rectangle) IntersectedDistance(x, y, angle float64) (bool, float64) {
 	l := 1000000.0
 	x2, y2 := x+math.Cos(angle)*l, y+math.Sin(angle)*l
-	return LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Min.X, r.Max.Y) ||
-		LineIntersection(x, y, x2, y2, r.Max.X, r.Min.Y, r.Max.X, r.Max.Y) ||
-		LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Max.X, r.Min.Y) ||
-		LineIntersection(x, y, x2, y2, r.Min.X, r.Max.Y, r.Max.X, r.Max.Y)
+	var dist float64 = math.MaxFloat64
+	var d float64
+	var i, b bool
+	var sx, sy float64
+	if i, sx, sy = LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Min.X, r.Max.Y); i {
+		b = true
+		if d = Distance(x, y, sx, sy); d < dist {
+			dist = d
+		}
+	}
+
+	if i, sx, sy = LineIntersection(x, y, x2, y2, r.Max.X, r.Min.Y, r.Max.X, r.Max.Y); i {
+		b = true
+		if d = Distance(x, y, sx, sy); d < dist {
+			dist = d
+		}
+	}
+	if i, sx, sy = LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Max.X, r.Min.Y); i {
+		b = true
+		if d = Distance(x, y, sx, sy); d < dist {
+			dist = d
+		}
+	}
+	if i, sx, sy = LineIntersection(x, y, x2, y2, r.Min.X, r.Max.Y, r.Max.X, r.Max.Y); i {
+		b = true
+		if d = Distance(x, y, sx, sy); d < dist {
+			dist = d
+		}
+	}
+
+	return b, dist
 
 }
 
-func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) bool {
+func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) (bool, float64, float64) {
 	a := ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
 	if a < 0 || a > 1 {
-		return false
+		return false, 0, 0
 	}
 	b := ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
-	return b >= 0 && b <= 1
-}
+	if b < 0 || b > 1 {
+		return false, 0, 0
+	}
 
-// func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) (x float64, y float64, ok bool) {
-// 	a := ((x4-x3)*(y1-y3) - (y4-y3)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
-// 	b := ((x2-x1)*(y1-y3) - (y2-y1)*(x1-x3)) / ((y4-y3)*(x2-x1) - (x4-x3)*(y2-y1))
-// 	ok = a >= 0 && b >= 0 && a <= 1 && b <= 1
-// 	if !ok {
-// 		return
-// 	}
-//
-// 	x = x1 + (a * (x2 - x1))
-// 	y = y1 + (b * (y2 - y1))
-// 	return
-// }
+	return true, x3 + (a * (x4 - x3)), y3 + (b * (y4 - y3))
+}
 
 func (r Rectangle) Intersect(o Rectangle) Rectangle {
 	if r.Min.X < o.Min.X {

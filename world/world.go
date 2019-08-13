@@ -59,9 +59,12 @@ func (w *World) Tick() {
 	var pos geometry.Rectangle
 	var b *Bot
 	var o Object
+	var intersects bool
 	var closest Object
 	var dist float64
+	var dist2 float64
 	var closestDist float64
+	var closestDist2 float64
 
 	// workers := 8
 	// var wg sync.WaitGroup
@@ -81,14 +84,20 @@ func (w *World) Tick() {
 		pos = b.Bounds()
 		closest = nil
 		closestDist = math.MaxFloat64
+		closestDist2 = math.MaxFloat64
 		dir := b.AbsDirection()
 		x, y := b.Center()
 		for _, o = range w.Objects {
-			if !o.Intersected(x, y, dir) {
+			dist2 = b.Distance(o)
+			if dist2 < closestDist2 {
+				closestDist2 = dist2
+			}
+
+			intersects, dist = o.IntersectedDistance(x, y, dir)
+			if !intersects {
 				continue
 			}
 
-			dist = b.Distance(o)
 			if dist < closestDist {
 				closest = o
 				closestDist = dist
@@ -97,7 +106,7 @@ func (w *World) Tick() {
 
 		// jobs <- &job{b, closest, closestDist}
 
-		b.Tick(closest, closestDist, w.maxDistance)
+		b.Tick(closest, closestDist, closestDist2, w.maxDistance)
 
 		score = 0
 		for _, o = range w.Objects {
@@ -108,7 +117,7 @@ func (w *World) Tick() {
 					continue
 				}
 
-				score -= 20000
+				score -= 10
 				b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
 			}
 		}

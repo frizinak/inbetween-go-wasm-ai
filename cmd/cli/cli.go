@@ -21,7 +21,7 @@ func main() {
 	rand.Seed(time.Now().UnixNano())
 
 	r1 := world.NewWall(world.Rect(200, 200, 50, 100))
-	bot := world.NewBot(0, 250, 1)
+	bot := world.NewBot(225, 5, 1)
 	x, y := bot.Center()
 
 	l := 100.0
@@ -31,9 +31,15 @@ func main() {
 
 	angle = math.Pi / 4
 	for i := 0.0; i < math.Pi*4; i += angle {
+
+		isect, dist := r1.IntersectedDistance(x, y, bot.AbsDirection())
+		if !isect {
+			dist = 0
+		}
 		fmt.Printf(
-			"%t %4d %4d %4d %4d %5.2f %5.2f\n",
-			r1.Intersected(x, y, bot.AbsDirection()),
+			"%t %5.2f %4d %4d %4d %4d %5.2f %5.2f\n",
+			isect,
+			dist,
 			int(i*180/math.Pi),
 			int(bot.AbsDirection()*180/math.Pi),
 			int(bot.Wall.Direction(r1)*180/math.Pi),

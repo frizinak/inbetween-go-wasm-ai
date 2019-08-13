@@ -22,16 +22,17 @@ type Bot struct {
 	maxSpeed float64
 
 	ClosestType string
+	DebugDist   float64
 }
 
 func NewBot(x, y float64, maxSpeed float64) *Bot {
-	b := neural.New(neural.Sigmoid, []int{3, 18, 10, 2})
+	b := neural.New(neural.Sigmoid, []int{4, 18, 10, 2})
 	b.RandomWeights()
 	return &Bot{
-		Wall:      NewWall(Rect(x, y, 12, 12)),
-		brain:     b,
-		direction: rand.Float64(),
-		maxSpeed:  maxSpeed,
+		Wall:  NewWall(Rect(x, y, 12, 12)),
+		brain: b,
+		//direction: rand.Float64(),
+		maxSpeed: maxSpeed,
 	}
 }
 
@@ -88,25 +89,35 @@ func (b *Bot) Rotate(rad float64) {
 	b.direction = dir / Pi2
 }
 
-func (b *Bot) Tick(o Object, dist, maxDistance float64) {
-	input := make([]float64, 3)
+func (b *Bot) Tick(o Object, dist, distEnv, maxDistance float64) {
+	input := make([]float64, 4)
 	input[0] = b.speed / b.maxSpeed
-	input[1] = -1
+	input[1] = distEnv / maxDistance
+	//input[1] = 0
+	// input[1] = -1
 	if o != nil {
-		input[1] = dist / maxDistance
+		//input[1] = b.Direction(o) / math.Pi
+		//input[1] = dist / maxDistance
+		input[2] = 1
+		if dist > 20 {
+			input[2] = 20 / dist
+		}
+		b.DebugDist = input[1]
+
 		b.ClosestType = "wall"
 		switch o.(type) {
 		case *Goal:
 			b.ClosestType = "goal"
-			input[2] = 1
+			input[3] = 1
 		}
 	}
 
 	output := b.brain.Input(input)
-	if output[0] > 0.6 {
-		b.direction += 0.01
-	} else if output[0] < 0.4 {
-		b.direction -= 0.01
+
+	if output[0] > 0.8 {
+		b.direction += 0.005
+	} else if output[0] < 0.6 {
+		b.direction -= 0.005
 	}
 
 	if b.direction < -1 {
@@ -115,9 +126,11 @@ func (b *Bot) Tick(o Object, dist, maxDistance float64) {
 		b.direction -= 1
 	}
 
-	b.speed -= 0.1
-	if output[1] > 0.5 {
+	//b.speed -= 0.1
+	if output[1] > 0.8 {
 		b.speed += 0.2
+	} else if output[1] > 0.6 {
+		b.speed -= 0.1
 	}
 
 	if b.speed > b.maxSpeed {
