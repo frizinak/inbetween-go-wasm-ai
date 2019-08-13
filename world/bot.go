@@ -25,7 +25,7 @@ type Bot struct {
 }
 
 func NewBot(x, y float64, maxSpeed float64) *Bot {
-	b := neural.New(neural.Sigmoid, []int{3, 16, 16, 16, 2})
+	b := neural.New(neural.Sigmoid, []int{3, 18, 10, 2})
 	b.RandomWeights()
 	return &Bot{
 		Wall:      NewWall(Rect(x, y, 12, 12)),

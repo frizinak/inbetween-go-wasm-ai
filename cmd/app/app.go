@@ -3,17 +3,16 @@ package main
 import (
 	"fmt"
 	"math"
-	"sync"
 	"syscall/js"
 	"time"
 
 	"github.com/frizinak/inbetween-go-wasm-ai/app"
+	"github.com/frizinak/inbetween-go-wasm-ai/bound"
 	"github.com/frizinak/inbetween-go-wasm-ai/world"
 )
 
-func render(ctx js.Value, world *world.World, app *app.App) <-chan struct{} {
-	wait := make(chan struct{})
-
+func render(ctx js.Value, app *app.App) {
+	world := app.World()
 	ctx.Set("fillStyle", "rgba(204, 204, 204, 0.30)")
 	ctx.Call("fillRect", 0, 0, world.Dx(), world.Dy())
 
@@ -24,9 +23,6 @@ func render(ctx js.Value, world *world.World, app *app.App) <-chan struct{} {
 	for _, o := range world.Bots {
 		draw(ctx, o, app.MaxScore())
 	}
-
-	go func() { wait <- struct{}{} }()
-	return wait
 }
 
 func draw(ctx js.Value, o world.Object, maxScore float64) {
@@ -72,22 +68,43 @@ func main() {
 	canvas := document.Call("getElementById", "canvas")
 	ctx := canvas.Call("getContext", "2d")
 
+	btnFast := document.Call("getElementById", "fast")
 	btnImport := document.Call("getElementById", "import")
 	btnExport := document.Call("getElementById", "export")
 	textarea := document.Call("getElementById", "brain")
+	stats := document.Call("getElementById", "stats")
 
-	var rw sync.Mutex
+	textarea.Set("value", string(bound.MustAsset("weights1.txt")))
+
 	done := false
 	a := app.New()
-	world, _, _ := a.Run(time.Microsecond * 500)
+
+	var tick <-chan struct{}
+	var wait <-chan struct{}
+	var stop chan<- struct{}
+	interval := time.Microsecond * 500
+
+	run := func(iv time.Duration, n int) {
+		fmt.Println("run with", iv, n)
+		tick, wait, stop = a.Run(iv, n)
+		for range tick {
+			stats.Set(
+				"innerText",
+				fmt.Sprintf(
+					"Generation: %d\nMax score: %5.2f\nAvg Score: %5.2f\n",
+					a.Generation(),
+					a.MaxScore(),
+					a.AvgScore(),
+				),
+			)
+		}
+	}
+	go run(interval, -1)
 
 	var anim js.Func
 	anim = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
 		go func() {
-			rw.Lock()
-			wait := render(ctx, world, a)
-			rw.Unlock()
-			<-wait
+			render(ctx, a)
 			if done {
 				anim.Release()
 				return
@@ -97,31 +114,42 @@ func main() {
 		return nil
 	})
 
-	go func() {
-		window.Call("requestAnimationFrame", anim)
-	}()
+	window.Call("requestAnimationFrame", anim)
 
-	go func() {
-		btnExport.Call(
-			"addEventListener",
-			"click",
-			js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				textarea.Set("value", a.Export())
-				return nil
-			}),
-		)
-		btnImport.Call(
-			"addEventListener",
-			"click",
-			js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-				err := a.Import(textarea.Get("value").String())
-				if err != nil {
-					window.Call("alert", err.Error())
-				}
-				return nil
-			}),
-		)
-	}()
+	btnExport.Call(
+		"addEventListener",
+		"click",
+		js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			textarea.Set("value", a.Export())
+			return nil
+		}),
+	)
+	btnImport.Call(
+		"addEventListener",
+		"click",
+		js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			err := a.Import(textarea.Get("value").String())
+			if err != nil {
+				window.Call("alert", err.Error())
+			}
+			return nil
+		}),
+	)
+	btnFast.Call(
+		"addEventListener",
+		"click",
+		js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+			go func() {
+				stop <- struct{}{}
+				<-wait
+				now := time.Now()
+				run(0, 5)
+				fmt.Println(time.Now().Sub(now))
+				go run(interval, -1)
+			}()
+			return nil
+		}),
+	)
 
 	c := make(chan struct{})
 	<-c

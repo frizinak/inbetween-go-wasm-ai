@@ -16,7 +16,9 @@ type App struct {
 	goal     world.Object
 	maxDist  float64
 	maxScore float64
+	avgScore float64
 	top      []float64
+	gen      int
 }
 
 func New() *App {
@@ -78,8 +80,20 @@ func New() *App {
 	return app
 }
 
+func (app *App) World() *world.World {
+	return app.w
+}
+
 func (app *App) MaxScore() float64 {
 	return app.maxScore
+}
+
+func (app *App) AvgScore() float64 {
+	return app.avgScore
+}
+
+func (app *App) Generation() int {
+	return app.gen
 }
 
 func (app *App) Export() string {
@@ -127,6 +141,15 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 
 	app.top = app.w.Bots[0].Brain().Weights()
 	app.maxScore = app.w.Bots[0].Score()
+	var tot float64
+	for _, b := range app.w.Bots {
+		s := b.Score()
+		if s > 0 {
+			tot += s
+		}
+	}
+	app.avgScore = tot / float64(len(app.w.Bots))
+	app.gen++
 
 	select {
 	case tick <- struct{}{}:
@@ -147,7 +170,8 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 	for i, b := range app.w.Bots {
 		b.Reset()
 		//b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
-		b.SetPos(float64(540+rand.Intn(100)), float64(600+rand.Intn(150)))
+		//550 - 650
+		b.SetPos(float64(570+rand.Intn(60)), float64(500+rand.Intn(250)))
 		if i < top {
 			continue
 		}
@@ -172,10 +196,11 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 	}
 }
 
-func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan struct{}) {
+func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{}, chan<- struct{}) {
 	wait := make(chan struct{})
 	tick := make(chan struct{})
-	newGenCount := 2000
+	stop := make(chan struct{})
+	newGenCount := 1500
 
 	go func() {
 		var count int
@@ -185,7 +210,16 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 		var score float64
 
 		dists := make([]float64, len(app.w.Bots))
+		times := n > 0
+
+	outer:
 		for {
+			select {
+			case <-stop:
+				break outer
+			default:
+			}
+
 			for i, b = range app.w.Bots {
 				dists[i] = b.Distance(app.goal)
 			}
@@ -193,7 +227,15 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 			count++
 
 			if count%newGenCount == 0 {
+				count = 0
 				app.NewGeneration(3, 0.005, tick)
+				//app.NewGeneration(3, 0.01, tick)
+				if times {
+					n--
+					if n <= 0 {
+						break
+					}
+				}
 			}
 
 			for _, b = range app.w.Bots {
@@ -206,16 +248,14 @@ func (app *App) Run(sleep time.Duration) (*world.World, <-chan struct{}, <-chan 
 				b.Reward(score)
 			}
 
-			if count == 1e6 {
-				count = 0
-			}
-
 			if sleep != 0 {
 				time.Sleep(sleep)
 			}
 		}
+
+		close(tick)
 		wait <- struct{}{}
 	}()
 
-	return app.w, tick, wait
+	return tick, wait, stop
 }

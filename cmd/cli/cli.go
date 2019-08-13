@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"os"
 	"time"
 
 	"net/http"
@@ -15,7 +16,7 @@ import (
 
 func main() {
 	go func() {
-		panic(http.ListenAndServe(":8080", nil))
+		http.ListenAndServe(":8080", nil)
 	}()
 	rand.Seed(time.Now().UnixNano())
 
@@ -42,13 +43,26 @@ func main() {
 		)
 		bot.Rotate(angle)
 	}
-	//os.Exit(0)
 
 	a := app.New()
-	_, tick, wait := a.Run(time.Duration(0))
+	tick, wait, _ := a.Run(time.Duration(0), -1)
 
+	last := time.Now()
 	for range tick {
-		fmt.Printf("top: %5.1f\n", a.MaxScore())
+		fmt.Printf("top: %5.1f avg: %5.1f\n", a.MaxScore(), a.AvgScore())
+
+		now := time.Now()
+		if now.Sub(last) > time.Second*10 {
+			last = now
+			fmt.Println("written /tmp/brain")
+			f, err := os.Create("/tmp/brain.tmp")
+			if err != nil {
+				panic(err)
+			}
+			f.WriteString(a.Export())
+			f.Close()
+			os.Rename("/tmp/brain.tmp", "/tmp/brain")
+		}
 	}
 	<-wait
 }

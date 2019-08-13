@@ -58,7 +58,7 @@ func (n *Network) Input(inputs []float64) []float64 {
 	var nextInputs []float64
 
 	bias := make([]float64, len(n.layout)-1)
-	for i := 0; i < len(n.layout)/2; i++ {
+	for i := 0; i < len(n.layout)/2+1; i++ {
 		bias[i] = 1
 	}
 
