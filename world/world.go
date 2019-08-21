@@ -2,6 +2,7 @@ package world
 
 import (
 	"math"
+	"runtime"
 
 	"github.com/frizinak/inbetween-go-wasm-ai/geometry"
 )
@@ -16,15 +17,31 @@ type World struct {
 	Bots        []*Bot
 	Objects     []Object
 	maxDistance float64
+	jobs        chan *job
+	jobsDone    chan struct{}
 }
 
 func New(r geometry.Rectangle) *World {
-	return &World{
+	workers := runtime.NumCPU()
+	w := &World{
 		r,
 		make([]*Bot, 0),
 		make([]Object, 0),
 		math.Sqrt(r.Dx()*r.Dx() + r.Dy()*r.Dy()),
+		make(chan *job, workers),
+		make(chan struct{}, workers),
 	}
+
+	for i := 0; i < workers; i++ {
+		go func() {
+			for job := range w.jobs {
+				job.Tick(w, job.b)
+				w.jobsDone <- struct{}{}
+			}
+		}()
+	}
+
+	return w
 }
 
 func (w *World) MaxDistance() float64 {
@@ -48,92 +65,61 @@ func (w *World) Collision(o1, o2 Object) geometry.Rectangle {
 	return r
 }
 
-type job struct {
-	b       *Bot
-	closest Object
-	dist    float64
+func (w *World) Tick() {
+	n := len(w.Bots)
+	done := make(chan struct{})
+	go func() {
+		for i := 0; i < n; i++ {
+			<-w.jobsDone
+		}
+		done <- struct{}{}
+	}()
+	for _, b := range w.Bots {
+		w.jobs <- &job{b}
+	}
+	<-done
 }
 
-func (w *World) Tick() {
-	var score float64
-	var pos geometry.Rectangle
-	var b *Bot
-	var o Object
+type job struct {
+	b *Bot
+}
+
+func (job *job) Tick(w *World, b *Bot) {
 	var closest Object
+	var o Object
 	var dist float64
-	var closestDist float64
 
-	// workers := 8
-	// var wg sync.WaitGroup
-	// jobs := make(chan *job, workers)
+	pos := b.Bounds()
+	closestDist := math.MaxFloat64
+	dir := b.AbsDirection()
+	x, y := b.Center()
+	for _, o = range w.Objects {
+		if !o.Intersected(x, y, dir) {
+			continue
+		}
 
-	// for i := 0; i < workers; i++ {
-	// 	wg.Add(1)
-	// 	go func() {
-	// 		for job := range jobs {
-	// 			job.b.Tick(job.closest, job.dist, w.maxDistance)
-	// 		}
-	// 		wg.Done()
-	// 	}()
-	// }
+		dist = b.Distance(o)
+		if dist < closestDist {
+			closest = o
+			closestDist = dist
+		}
+	}
 
-	for _, b = range w.Bots {
-		pos = b.Bounds()
-		closest = nil
-		closestDist = math.MaxFloat64
-		dir := b.AbsDirection()
-		x, y := b.Center()
-		for _, o = range w.Objects {
-			if !o.Intersected(x, y, dir) {
+	b.Tick(closest, closestDist, w.maxDistance)
+
+	score := 0.0
+	for _, o = range w.Objects {
+		d := o.Distance(b)
+		if d == 0 {
+			c := w.Collision(b, o)
+			if c.Empty() {
 				continue
 			}
 
-			dist = b.Distance(o)
-			if dist < closestDist {
-				closest = o
-				closestDist = dist
-			}
+			score -= 20000
+			b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
 		}
-
-		// jobs <- &job{b, closest, closestDist}
-
-		b.Tick(closest, closestDist, w.maxDistance)
-
-		score = 0
-		for _, o = range w.Objects {
-			d := o.Distance(b)
-			if d == 0 {
-				c := w.Collision(b, o)
-				if c.Empty() {
-					continue
-				}
-
-				score -= 20000
-				b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
-			}
-		}
-
-		b.Reward(score)
 	}
 
-	// close(jobs)
-	// wg.Wait()
-
-	// for _, b := range w.Bots {
-	// 	score = 0
-	// 	for _, o = range w.Objects {
-	// 		d := o.Distance(b)
-	// 		if d == 0 {
-	// 			c := w.Collision(b, o)
-	// 			if c.Empty() {
-	// 				continue
-	// 			}
-
-	// 			score -= 20000
-	// 			b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
-	// 		}
-	// 	}
-
-	// 	b.Reward(score)
-	// }
+	b.Reward(score)
 }
