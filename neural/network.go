@@ -81,5 +81,9 @@ func (n *Network) Input(inputs []float64) []float64 {
 		inputs = nextInputs
 	}
 
+	// for i := range inputs {
+	// 	inputs[i] = n.activation(inputs[i])
+	// }
+
 	return inputs
 }

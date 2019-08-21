@@ -24,7 +24,7 @@ type App struct {
 func New() *App {
 	app := &App{}
 
-	nbots := 100
+	nbots := 300
 	height := 800.0
 	width := 1200.0
 
@@ -56,13 +56,13 @@ func New() *App {
 	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
 	// ONE app.goal = world.NewGoal(world.Rect(400, 100, 50, 50))
 
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(530, 600, 70, 20)))
-	// ZIGZAG //app.w.AddObject(world.NewWall(world.Rect(640, 600, 30, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(530, 600, 70, 20)))
+	//app.w.AddObject(world.NewWall(world.Rect(640, 600, 30, 20)))
 
-	// ZIGZAG //app.w.AddObject(world.NewWall(world.Rect(530, 500, 30, 20)))
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(600, 500, 70, 20)))
+	//app.w.AddObject(world.NewWall(world.Rect(530, 500, 30, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(600, 500, 70, 20)))
 
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
 
 	app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
 	app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
@@ -241,7 +241,7 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 
 			if count%newGenCount == 0 {
 				count = 0
-				app.NewGeneration(3, 0.005, tick)
+				app.NewGeneration(2, 0.05, tick)
 				//app.NewGeneration(3, 0.01, tick)
 				if times {
 					n--
@@ -256,6 +256,8 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 				score = app.maxDist / (dist * dist)
 				if dist < 2 {
 					score = 1000
+				} else if b.Speed() < 0.05 {
+					score = -5
 				}
 
 				b.Reward(score)
