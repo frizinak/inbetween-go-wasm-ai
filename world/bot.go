@@ -57,6 +57,20 @@ func (b *Bot) Speed() float64 {
 	return b.speed
 }
 
+func (b *Bot) Sides() (x1, y1, x2, y2 float64) {
+	r := b.Dx() / 2
+	x, y := b.Center()
+	angle := b.AbsDirection() - math.Pi/2
+	cos, sin := math.Cos(angle)*r, math.Sin(angle)*r
+
+	x1 = x - cos
+	y1 = y - sin
+	x2 = x + cos
+	y2 = y + sin
+
+	return
+}
+
 func (b *Bot) Center() (x, y float64) {
 	x, y = b.Min.X+b.Dx()/2, b.Min.Y+b.Dy()/2
 	return

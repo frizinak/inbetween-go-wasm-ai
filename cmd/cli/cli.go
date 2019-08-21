@@ -45,6 +45,7 @@ func main() {
 	}
 
 	a := app.New()
+	//a.Import(string(bound.MustAsset("weights1.txt")))
 	tick, wait, _ := a.Run(time.Duration(0), -1)
 
 	last := time.Now()
