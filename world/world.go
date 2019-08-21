@@ -92,9 +92,9 @@ func (job *job) Tick(w *World, b *Bot) {
 	pos := b.Bounds()
 	closestDist := math.MaxFloat64
 	dir := b.AbsDirection()
-	x, y := b.Center()
+	x1, y1, x2, y2 := b.Sides()
 	for _, o = range w.Objects {
-		if !o.Intersected(x, y, dir) {
+		if !o.Intersected(x1, y1, dir) && !o.Intersected(x2, y2, dir) {
 			continue
 		}
 
@@ -116,7 +116,7 @@ func (job *job) Tick(w *World, b *Bot) {
 				continue
 			}
 
-			score -= 20000
+			score -= 20
 			b.Translate(pos.Min.X-b.Min.X, pos.Min.Y-b.Min.Y)
 		}
 	}

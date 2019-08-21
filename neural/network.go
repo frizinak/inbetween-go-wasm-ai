@@ -12,6 +12,8 @@ type Network struct {
 	layout     []int
 	weights    []float64
 	output     []float64
+	bias       []float64
+	buf        [][]float64
 }
 
 func New(activation Activation, layout []int) *Network {
@@ -20,11 +22,23 @@ func New(activation Activation, layout []int) *Network {
 		total += layout[i] * layout[i+1]
 	}
 
+	bias := make([]float64, len(layout)-1)
+	for i := 0; i < len(layout)/2+1; i++ {
+		bias[i] = 1
+	}
+
+	buf := make([][]float64, len(layout))
+	for layer := 0; layer < len(layout)-1; layer++ {
+		buf[layer] = make([]float64, layout[layer+1])
+	}
+
 	return &Network{
 		activation,
 		layout,
 		make([]float64, total),
 		make([]float64, layout[len(layout)-1]),
+		bias,
+		buf,
 	}
 }
 
@@ -55,18 +69,10 @@ func (n *Network) Input(inputs []float64) []float64 {
 	var in, out int
 	var layer int
 
-	var nextInputs []float64
-
-	bias := make([]float64, len(n.layout)-1)
-	for i := 0; i < len(n.layout)/2+1; i++ {
-		bias[i] = 1
-	}
-
 	for layer = 0; layer < len(n.layout)-1; layer++ {
 		in = n.layout[layer]
 		out = n.layout[layer+1]
 
-		nextInputs = make([]float64, out)
 		for outp = 0; outp < out; outp++ {
 			total = 0
 			for inp = 0; inp < in; inp++ {
@@ -74,11 +80,11 @@ func (n *Network) Input(inputs []float64) []float64 {
 				offset += 1
 			}
 
-			total = n.activation(total + bias[layer])
-			nextInputs[outp] = total
+			total = n.activation(total + n.bias[layer])
+			n.buf[layer][outp] = total
 		}
 
-		inputs = nextInputs
+		inputs = n.buf[layer]
 	}
 
 	return inputs

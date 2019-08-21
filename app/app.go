@@ -21,10 +21,9 @@ type App struct {
 	gen      int
 }
 
-func New() *App {
+func New(nbots int) *App {
 	app := &App{}
 
-	nbots := 100
 	height := 800.0
 	width := 1200.0
 
@@ -33,7 +32,7 @@ func New() *App {
 
 	bots := make([]*world.Bot, nbots)
 	for i := 0; i < nbots; i++ {
-		bots[i] = world.NewBot(600, 600, 2.5)
+		bots[i] = world.NewBot(600, 600, 2)
 		botPos(bots[i])
 	}
 
@@ -56,13 +55,18 @@ func New() *App {
 	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
 	// ONE app.goal = world.NewGoal(world.Rect(400, 100, 50, 50))
 
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(530, 600, 70, 20)))
-	// ZIGZAG //app.w.AddObject(world.NewWall(world.Rect(640, 600, 30, 20)))
+	// |--   |
+	app.w.AddObject(world.NewWall(world.Rect(530, 180, 70, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(600, 180, 20, 70)))
+	// |   --|
+	app.w.AddObject(world.NewWall(world.Rect(600, 300, 70, 20)))
+	// |--   |
+	app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
+	// |--  -|
+	app.w.AddObject(world.NewWall(world.Rect(530, 500, 70, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(630, 500, 40, 20)))
 
-	// ZIGZAG //app.w.AddObject(world.NewWall(world.Rect(530, 500, 30, 20)))
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(600, 500, 70, 20)))
-
-	// ZIGZAG app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
+	app.w.AddObject(world.NewWall(world.Rect(400, 100, 20, 80)))
 
 	app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
 	app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
@@ -213,7 +217,7 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 	wait := make(chan struct{})
 	tick := make(chan struct{})
 	stop := make(chan struct{})
-	newGenCount := 1500
+	newGenCount := 2000
 
 	go func() {
 		var count int
@@ -241,7 +245,7 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 
 			if count%newGenCount == 0 {
 				count = 0
-				app.NewGeneration(3, 0.005, tick)
+				app.NewGeneration(2, 0.005, tick)
 				//app.NewGeneration(3, 0.01, tick)
 				if times {
 					n--
@@ -251,11 +255,17 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 				}
 			}
 
-			for _, b = range app.w.Bots {
+			for i, b = range app.w.Bots {
 				dist = b.Distance(app.goal)
-				score = app.maxDist / (dist * dist)
-				if dist < 2 {
+				score = 0
+				if dist < dists[i] {
+					score += 0.2 //* b.Speed()
+				}
+				score += app.maxDist / (10 * dist)
+				if dist < 5 {
 					score = 1000
+				} else if b.Speed() < 0.2 {
+					score = -2
 				}
 
 				b.Reward(score)

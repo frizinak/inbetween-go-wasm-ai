@@ -79,12 +79,12 @@ func main() {
 	textarea.Set("value", string(bound.MustAsset("weights1.txt")))
 
 	done := false
-	a := app.New()
+	a := app.New(80)
 
 	var tick <-chan struct{}
 	var wait <-chan struct{}
 	var stop chan<- struct{}
-	interval := time.Microsecond * 500
+	interval := time.Microsecond * 250
 
 	run := func(iv time.Duration, n int) {
 		fmt.Println("run with", iv, n)
