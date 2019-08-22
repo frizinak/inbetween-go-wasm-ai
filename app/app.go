@@ -24,8 +24,8 @@ type App struct {
 func New(nbots int) *App {
 	app := &App{}
 
-	height := 800.0
-	width := 1200.0
+	height := 600.0
+	width := 800.0
 
 	app.w = world.New(world.Rect(0, 0, width, height))
 	app.maxDist = app.w.MaxDistance()
@@ -33,55 +33,61 @@ func New(nbots int) *App {
 	bots := make([]*world.Bot, nbots)
 	for i := 0; i < nbots; i++ {
 		bots[i] = world.NewBot(600, 600, 2)
-		botPos(bots[i])
+		app.botPos(bots[i])
 	}
 
 	for _, bot := range bots {
 		app.w.AddBot(bot)
 	}
-	// ONE app.w.AddObject(world.NewWall(world.Rect(0, 380, 550, 20)))
-	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 380, 550, 20)))
 
-	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 380)))
-	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 200)))
-	// ONE // app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
-	// ONE // app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
+	// MAZE
+	th := 0.003
+	sp := 0.07
+	pt := 0.04
+	app.w.AddObject(world.NewWall(app.w.Relative(sp, pt, th, 1-pt)))
+	app.w.AddObject(world.NewWall(app.w.Relative(sp+th, 0.2, sp-pt, th)))
+	app.w.AddObject(world.NewWall(app.w.Relative(2*sp-(sp-pt), 0.3, sp-pt, th)))
 
-	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 180, 200, 20)))
-	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 50, 200, 20)))
+	app.w.AddObject(world.NewWall(app.w.Relative(2*sp, 0.0, th, 1-pt)))
 
-	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 50, 20, 130)))
+	// app.w.AddObject(world.NewWall(world.Rect(100, 100, 10, 700)))
 
-	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
-	// ONE app.goal = world.NewGoal(world.Rect(400, 100, 50, 50))
+	// app.w.AddObject(world.NewWall(world.Rect(110, 300, 70, 10)))
 
-	// |--   |
-	app.w.AddObject(world.NewWall(world.Rect(530, 180, 70, 20)))
-	app.w.AddObject(world.NewWall(world.Rect(600, 180, 20, 70)))
-	// |   --|
-	app.w.AddObject(world.NewWall(world.Rect(600, 300, 70, 20)))
-	// |--   |
-	app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
-	// |--  -|
-	app.w.AddObject(world.NewWall(world.Rect(530, 500, 70, 20)))
-	app.w.AddObject(world.NewWall(world.Rect(630, 500, 40, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(200, 0, 10, 600)))
 
-	app.w.AddObject(world.NewWall(world.Rect(400, 100, 20, 80)))
+	app.goal = world.NewGoal(app.w.Relative(0.98, 0.98, 0.01, 0.01))
+	// END MAZE
 
-	app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
-	app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
+	// // TRAINING SET 1
+	// // |--   |
+	// app.w.AddObject(world.NewWall(world.Rect(530, 180, 70, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(600, 180, 20, 70)))
+	// // |   --|
+	// app.w.AddObject(world.NewWall(world.Rect(600, 300, 70, 20)))
+	// // |--   |
+	// app.w.AddObject(world.NewWall(world.Rect(530, 400, 70, 20)))
+	// // |--  -|
+	// app.w.AddObject(world.NewWall(world.Rect(530, 500, 70, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(630, 500, 40, 20)))
 
-	app.w.AddObject(world.NewWall(world.Rect(320, 180, 220, 20)))
-	app.w.AddObject(world.NewWall(world.Rect(200, 50, 350, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(400, 100, 20, 80)))
 
-	app.w.AddObject(world.NewWall(world.Rect(200, 300, 120, 20)))
-	app.w.AddObject(world.NewWall(world.Rect(320, 180, 20, 140)))
+	// app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
+	// app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
 
-	app.w.AddObject(world.NewWall(world.Rect(200, 50, 20, 250)))
+	// app.w.AddObject(world.NewWall(world.Rect(320, 180, 220, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(200, 50, 350, 20)))
 
-	app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
+	// app.w.AddObject(world.NewWall(world.Rect(200, 300, 120, 20)))
+	// app.w.AddObject(world.NewWall(world.Rect(320, 180, 20, 140)))
 
-	app.goal = world.NewGoal(world.Rect(250, 230, 50, 50))
+	// app.w.AddObject(world.NewWall(world.Rect(200, 50, 20, 250)))
+
+	// app.w.AddObject(world.NewWall(world.Rect(530, 0, 20, 50)))
+
+	// app.goal = world.NewGoal(world.Rect(250, 230, 50, 50))
+	// // END TRAINING SET 1
 
 	app.w.AddObject(app.goal)
 
@@ -93,8 +99,11 @@ func New(nbots int) *App {
 	return app
 }
 
-func botPos(bot *world.Bot) {
-	bot.SetPos(float64(570+rand.Intn(60)), float64(650+rand.Intn(100)))
+func (app *App) botPos(bot *world.Bot) {
+	bot.SetPos(
+		app.w.Dx()*(0.01+rand.Float64()/50),
+		app.w.Dy()*(0.8+rand.Float64()/8),
+	)
 }
 
 func (app *App) World() *world.World {
@@ -188,7 +197,7 @@ func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
 		b.Reset()
 		//b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
 		//550 - 650
-		botPos(b)
+		app.botPos(b)
 		if i < top {
 			continue
 		}

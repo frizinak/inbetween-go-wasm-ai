@@ -57,3 +57,8 @@ func (g *Goal) Solid() bool {
 func NewGoal(r geometry.Rectangle) *Goal {
 	return &Goal{Wall{r}}
 }
+
+func Rect(x, y float64, width, height float64) geometry.Rectangle {
+	r := geometry.Rect(x, y, x+width, y+height)
+	return r
+}

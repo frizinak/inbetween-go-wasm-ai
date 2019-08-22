@@ -33,7 +33,7 @@ func draw(ctx js.Value, o world.Object, maxScore float64) {
 	}
 
 	b := o.Bounds()
-	clr := "black"
+	clr := "rgba(0,0,0,0.5)"
 	switch v := o.(type) {
 	case *world.Bot:
 		// if v.ClosestType == "wall" {

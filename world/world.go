@@ -7,11 +7,6 @@ import (
 	"github.com/frizinak/inbetween-go-wasm-ai/geometry"
 )
 
-func Rect(x, y float64, width, height float64) geometry.Rectangle {
-	r := geometry.Rect(x, y, x+width, y+height)
-	return r
-}
-
 type World struct {
 	geometry.Rectangle
 	Bots        []*Bot
@@ -42,6 +37,12 @@ func New(r geometry.Rectangle) *World {
 	}
 
 	return w
+}
+
+func (w *World) Relative(pctX, pctY, pctW, pctH float64) geometry.Rectangle {
+	dx := w.Dx()
+	dy := w.Dy()
+	return Rect(dx*pctX, dy*pctY, dx*pctW, dy*pctH)
 }
 
 func (w *World) MaxDistance() float64 {
