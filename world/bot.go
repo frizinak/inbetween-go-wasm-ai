@@ -14,7 +14,7 @@ type Bot struct {
 
 	brain *neural.Network
 
-	score float64
+	fitness float64
 
 	speed     float64
 	direction float64
@@ -25,7 +25,7 @@ type Bot struct {
 }
 
 func NewBot(x, y float64, maxSpeed float64) *Bot {
-	b := neural.New(neural.Sigmoid, []int{3, 16, 16, 16, 2})
+	b := neural.New(neural.Sigmoid, []int{3, 14, 10, 2})
 	b.RandomWeights()
 	return &Bot{
 		Wall:      NewWall(Rect(x, y, 12, 12)),
@@ -36,25 +36,29 @@ func NewBot(x, y float64, maxSpeed float64) *Bot {
 }
 
 func (b *Bot) Reward(i float64) {
-	b.score += i
+	b.fitness += i
 }
 
-func (b *Bot) Score() float64 {
-	return b.score
+func (b *Bot) Fitness() float64 {
+	return b.fitness
 }
 
 func (b *Bot) Brain() *neural.Network {
 	return b.brain
 }
 
-func (b *Bot) Reset() {
+func (b *Bot) Reset(direction float64) {
 	b.speed = 0
-	b.score = 0
-	b.direction = rand.Float64()
+	b.fitness = 0
+	b.direction = direction //rand.Float64()
 }
 
 func (b *Bot) Speed() float64 {
 	return b.speed
+}
+
+func (b *Bot) setSpeed(s float64) {
+	b.speed = s
 }
 
 func (b *Bot) Sides() (x1, y1, x2, y2 float64) {

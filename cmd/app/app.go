@@ -5,6 +5,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"math/rand"
 	"syscall/js"
 	"time"
 
@@ -42,7 +43,7 @@ func draw(ctx js.Value, o world.Object, maxScore float64) {
 		// 	clr = "red"
 		// }
 
-		s := v.Score()
+		s := v.Fitness()
 		if s > 0 {
 			clr = fmt.Sprintf("rgb(%d, 30, 30)", int(s/maxScore*255))
 		}
@@ -65,6 +66,8 @@ func draw(ctx js.Value, o world.Object, maxScore float64) {
 }
 
 func main() {
+	rand.Seed(time.Now().UnixNano())
+
 	window := js.Global()
 	document := window.Get("document")
 	canvas := document.Call("getElementById", "canvas")
@@ -79,12 +82,12 @@ func main() {
 	textarea.Set("value", string(bound.MustAsset("weights1.txt")))
 
 	done := false
-	a := app.New(80)
+	a := app.New(150)
 
 	var tick <-chan struct{}
 	var wait <-chan struct{}
 	var stop chan<- struct{}
-	interval := time.Microsecond * 250
+	interval := time.Microsecond * 100
 
 	run := func(iv time.Duration, n int) {
 		fmt.Println("run with", iv, n)
@@ -93,10 +96,10 @@ func main() {
 			stats.Set(
 				"innerText",
 				fmt.Sprintf(
-					"Generation: %d\nMax score: %5.2f\nAvg Score: %5.2f\n",
+					"Generation: %d\nMax score: %5.2f\nMedian Score: %5.2f\n",
 					a.Generation(),
 					a.MaxScore(),
-					a.AvgScore(),
+					a.MedianScore(),
 				),
 			)
 		}

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"math"
 	"math/rand"
 	"sort"
 	"strconv"
@@ -12,17 +13,39 @@ import (
 )
 
 type App struct {
-	w        *world.World
-	goal     world.Object
-	maxDist  float64
+	w    *world.World
+	goal world.Object
+
+	maxDist float64
+
 	maxScore float64
-	avgScore float64
-	top      []float64
+	scores   []float64
 	gen      int
+
+	top []float64
+
+	ticks           int
+	parents         int
+	parentsPerChild int
+	recombChance    float64
+	mutChance       float64
 }
 
 func New(nbots int) *App {
-	app := &App{}
+	app := &App{
+		ticks:           1500,
+		recombChance:    0.2,
+		mutChance:       0.005,
+		parentsPerChild: 3,
+		parents:         nbots / 20,
+	}
+
+	app.parents = nbots / 5
+	if app.parents < 2 {
+		app.parents = 2
+	} else if app.parents > app.parentsPerChild*6 {
+		app.parents = app.parentsPerChild * 6
+	}
 
 	height := 800.0
 	width := 1200.0
@@ -33,7 +56,7 @@ func New(nbots int) *App {
 	bots := make([]*world.Bot, nbots)
 	for i := 0; i < nbots; i++ {
 		bots[i] = world.NewBot(600, 600, 2)
-		botPos(bots[i])
+		app.botPos(bots[i])
 	}
 
 	for _, bot := range bots {
@@ -44,8 +67,8 @@ func New(nbots int) *App {
 
 	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 380)))
 	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 200)))
-	// ONE // app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
-	// ONE // app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(650, 0, 20, 800)))
+	// ONE app.w.AddObject(world.NewWall(world.Rect(530, 180, 20, 620)))
 
 	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 180, 200, 20)))
 	// ONE app.w.AddObject(world.NewWall(world.Rect(350, 50, 200, 20)))
@@ -93,8 +116,15 @@ func New(nbots int) *App {
 	return app
 }
 
-func botPos(bot *world.Bot) {
+func (app *App) botPos(bot *world.Bot) {
+	//if app.gen > 30 {
 	bot.SetPos(float64(570+rand.Intn(60)), float64(650+rand.Intn(100)))
+	bot.Reset(rand.Float64())
+	return
+	//}
+
+	bot.Reset(0)
+	bot.SetPos(600, 750)
 }
 
 func (app *App) World() *world.World {
@@ -105,8 +135,11 @@ func (app *App) MaxScore() float64 {
 	return app.maxScore
 }
 
-func (app *App) AvgScore() float64 {
-	return app.avgScore
+func (app *App) MedianScore() float64 {
+	if len(app.scores) == 0 {
+		return 0
+	}
+	return app.scores[len(app.scores)/2]
 }
 
 func (app *App) Generation() int {
@@ -151,65 +184,65 @@ func (app *App) Import(s string) error {
 	return nil
 }
 
-func (app *App) NewGeneration(top int, chance float64, tick chan struct{}) {
+func (app *App) NewGeneration(tick chan struct{}) {
 	sort.Slice(app.w.Bots, func(i, j int) bool {
-		return app.w.Bots[i].Score() > app.w.Bots[j].Score()
+		return app.w.Bots[i].Fitness() > app.w.Bots[j].Fitness()
 	})
 
-	app.top = app.w.Bots[0].Brain().Weights()
-	app.maxScore = app.w.Bots[0].Score()
-	var tot float64
-	for _, b := range app.w.Bots {
-		s := b.Score()
-		if s > 0 {
-			tot += s
-		}
+	if len(app.scores) < len(app.w.Bots) {
+		app.scores = make([]float64, len(app.w.Bots))
 	}
-	app.avgScore = tot / float64(len(app.w.Bots))
+	for i := range app.w.Bots {
+		app.scores[i] = app.w.Bots[i].Fitness()
+	}
+	sort.Float64s(app.scores)
+
+	app.maxScore = app.w.Bots[0].Fitness()
+	w := app.w.Bots[0].Brain().Weights()
+	app.top = make([]float64, len(w))
+	copy(app.top, w)
 	app.gen++
 
-	select {
-	case tick <- struct{}{}:
-	default:
+	tick <- struct{}{}
+
+	e := make([]genetic.Entity, len(app.w.Bots))
+	for i := range app.w.Bots {
+		e[i] = app.w.Bots[i]
 	}
 
-	best := make([][]float64, 0, top)
-	for i := 0; i < top; i++ {
-		w := app.w.Bots[i].Brain().Weights()
+	parents := app.parents
+	best := make([][]float64, 0, parents)
+	for i := 0; i < app.parents; i++ {
+		sel := genetic.Select(e).(*world.Bot)
+		w := sel.Brain().Weights()
 		cp := make([]float64, len(w))
 		copy(cp, w)
 		best = append(best, cp)
 	}
+	parents = len(best)
+	perChild := int(math.Ceil(float64(parents) / float64(app.parentsPerChild)))
+	if perChild == 0 {
+		perChild = 1
+	}
 
-	top = len(best)
-
-	// app.goal.SetPos(float64(300+rand.Intn(500)), float64(100+rand.Intn(200)))
-	for i, b := range app.w.Bots {
-		b.Reset()
-		//b.SetPos(float64(400+rand.Intn(400)), float64(600+rand.Intn(150)))
-		//550 - 650
-		botPos(b)
-		if i < top {
-			continue
+	for i := parents; i < len(app.w.Bots); i++ {
+		n := i % perChild
+		min, max := n*app.parentsPerChild, (n+1)*app.parentsPerChild
+		if max > parents {
+			max = parents
 		}
 
-		if top >= 1 {
-			ix1 := 0
-			ix2 := 0
-			if top > 2 {
-				ix1 = rand.Intn(top)
-				ix2 = rand.Intn(top)
-			} else if top > 1 {
-				ix2 = 1
-			}
+		app.w.Bots[i].Brain().SetWeights(
+			genetic.Reproduce(
+				best[min:max],
+				app.recombChance,
+				app.mutChance,
+			),
+		)
+	}
 
-			p1 := best[ix1]
-			p2 := best[ix2]
-			b.Brain().SetWeights(genetic.Reproduce(p1, p2, chance))
-			continue
-		}
-
-		b.Brain().RandomWeights()
+	for _, b := range app.w.Bots {
+		app.botPos(b)
 	}
 }
 
@@ -217,7 +250,6 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 	wait := make(chan struct{})
 	tick := make(chan struct{})
 	stop := make(chan struct{})
-	newGenCount := 2000
 
 	go func() {
 		var count int
@@ -243,10 +275,9 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 			app.w.Tick()
 			count++
 
-			if count%newGenCount == 0 {
+			if count%app.ticks == 0 {
 				count = 0
-				app.NewGeneration(2, 0.005, tick)
-				//app.NewGeneration(3, 0.01, tick)
+				app.NewGeneration(tick)
 				if times {
 					n--
 					if n <= 0 {
@@ -255,17 +286,13 @@ func (app *App) Run(sleep time.Duration, n int) (<-chan struct{}, <-chan struct{
 				}
 			}
 
-			for i, b = range app.w.Bots {
+			for _, b = range app.w.Bots {
 				dist = b.Distance(app.goal)
-				score = 0
-				if dist < dists[i] {
-					score += 0.2 //* b.Speed()
-				}
-				score += app.maxDist / (10 * dist)
+				score = app.maxDist / (10 * dist)
 				if dist < 5 {
 					score = 1000
 				} else if b.Speed() < 0.2 {
-					score = -2
+					score -= 10
 				}
 
 				b.Reward(score)

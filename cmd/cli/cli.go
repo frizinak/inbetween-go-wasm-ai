@@ -18,13 +18,13 @@ func main() {
 	}()
 	rand.Seed(time.Now().UnixNano())
 
-	a := app.New(200)
+	a := app.New(300)
 	//a.Import(string(bound.MustAsset("weights1.txt")))
 	tick, wait, _ := a.Run(time.Duration(0), -1)
 
 	last := time.Now()
 	for range tick {
-		fmt.Printf("top: %5.1f avg: %5.1f\n", a.MaxScore(), a.AvgScore())
+		fmt.Printf("top: %5.1f median: %5.1f\n", a.MaxScore(), a.MedianScore())
 
 		now := time.Now()
 		if now.Sub(last) > time.Second*10 {

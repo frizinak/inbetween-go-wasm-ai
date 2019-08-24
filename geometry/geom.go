@@ -41,14 +41,15 @@ func (r Rectangle) Translate(dx, dy float64) Rectangle {
 	}
 }
 
-func (r Rectangle) Intersected(x, y, angle float64) bool {
-	l := 1000000.0
-	x2, y2 := x+math.Cos(angle)*l, y+math.Sin(angle)*l
-	return LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Min.X, r.Max.Y) ||
-		LineIntersection(x, y, x2, y2, r.Max.X, r.Min.Y, r.Max.X, r.Max.Y) ||
-		LineIntersection(x, y, x2, y2, r.Min.X, r.Min.Y, r.Max.X, r.Min.Y) ||
-		LineIntersection(x, y, x2, y2, r.Min.X, r.Max.Y, r.Max.X, r.Max.Y)
+func (r Rectangle) Intersected(x1, y1, x2, y2 float64) bool {
+	return LineIntersection(x1, y1, x2, y2, r.Min.X, r.Min.Y, r.Min.X, r.Max.Y) ||
+		LineIntersection(x1, y1, x2, y2, r.Max.X, r.Min.Y, r.Max.X, r.Max.Y) ||
+		LineIntersection(x1, y1, x2, y2, r.Min.X, r.Min.Y, r.Max.X, r.Min.Y) ||
+		LineIntersection(x1, y1, x2, y2, r.Min.X, r.Max.Y, r.Max.X, r.Max.Y)
+}
 
+func Line(x, y, angle, length float64) (float64, float64) {
+	return x + math.Cos(angle)*length, y + math.Sin(angle)*length
 }
 
 func LineIntersection(x1, y1, x2, y2, x3, y3, x4, y4 float64) bool {
